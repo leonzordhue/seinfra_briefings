@@ -861,7 +861,8 @@ function abrirBriefing(id) {
   const row = document.getElementById('row-'+id);
   if (row) row.classList.add('selecionado');
 
-  const tipo = TIPOS[c.tipo]||TIPOS.viario;
+  const tipo     = TIPOS[c.tipo]||TIPOS.viario;
+  const modInfo  = MODALIDADE_INFO[c.modalidade]||MODALIDADE_INFO[''];
 
   // Status
   let sitClasse='andamento', sitIcon='🟢';
@@ -870,90 +871,22 @@ function abrirBriefing(id) {
   else if (c.status==='nova') { sitClasse='nova'; sitIcon='📋'; }
   else if (c.status==='inaugurar') { sitClasse='nova'; sitIcon='🎉'; }
 
-  // Barras
-  const pFis = Math.min(c.avFisico,100);
-  const pFin = Math.min(c.avFinanceiro,100);
-  const clsFis = c.status==='concluida'?'concluido':'fisico';
-  const clsFin = c.status==='concluida'?'concluido':'financeiro';
-
-  // Serviços
-  const iconServ = {'terraplan':'⛏️','paviment':'🛣️','drenag':'💧','sinaliz':'🚦','demoli':'🏚️','urbaniz':'🌿','estrutur':'🔩','fundaç':'🏗️','alvenaria':'🧱','instalaç':'⚡','acabament':'🎨','flutuante':'⚓','passarela':'🌉','deslocam':'🪄'};
-  function iServ(s) { const sl=s.toLowerCase(); for(const[k,v] of Object.entries(iconServ)) if(sl.includes(k)) return v; return '🔧'; }
-
-  const servicosTags = c.servicos.length
-    ? c.servicos.map(s=>`<div class="stag">${iServ(s)} ${s}</div>`).join('')
-    : '<div class="stag">🔧 Consultar contrato</div>';
-
-  const servConclTags = c.servicosConcluidos.length
-    ? `<div style="margin-top:0.75rem;"><div class="obra-box-label" style="margin-bottom:0.4rem;">✅ Serviços Concluídos</div><div class="servicos-tags">${c.servicosConcluidos.map(s=>`<div class="stag stag-concluido">✔ ${s}</div>`).join('')}</div></div>`
-    : '';
-
   // Período
   let periodo = '';
   if (c.inicio&&c.fim) periodo=`${c.inicio} → ${c.fim}`;
   else if (c.execucao) periodo=c.execucao;
   else if (c.inicio) periodo=`A partir de ${c.inicio}`;
 
-  // Valor exibido
-  const valorExib = fmtValor(c.valor);
-  const valorMun  = fmtValor(c.valorMunicipio);
+  // Barras
+  const pFis = Math.min(c.avFisico,100);
+  const pFin = Math.min(c.avFinanceiro,100);
 
-  // ── FICHA TÉCNICA (agrupamento por município igual ao PDF)
-  // Sanitiza: remove valores que claramente não são nomes de município
-  const munRaw = c.municipio || '';
-  const mun = munRaw.length > 2 && munRaw.length < 60 && !munRaw.match(/^\d/) ? munRaw : '';
-  const doMun = mun ? todosContratos.filter(x=>x.municipio===mun) : [c];
-  const inaugurar = doMun.filter(x=>x.status==='inaugurar');
-  const novas     = doMun.filter(x=>x.status==='nova');
-  const vigentes  = doMun.filter(x=>x.status==='vigente'||x.status==='paralisada');
-  const concluidas= doMun.filter(x=>x.status==='concluida');
-
-  const totalObrasN = c.totalObras || doMun.length;
-  const investTotal = c.totalInvest || fmtValor(String(doMun.reduce((a,x)=>{
-    const v=parseFloat((x.valor||'0').replace(/[^0-9,]/g,'').replace(',','.'));
-    return a+(isNaN(v)?0:v);
-  },0)));
-  const empTotal = c.totalEmpregos || doMun.reduce((a,x)=>{
-    const e=parseInt((x.empregos||'0').replace(/\D/g,''));
-    return a+(isNaN(e)?0:e);
-  },0);
-
-  function fichaObra(obra) {
-    return `<div class="ficha-obra-item">
-      <div class="ficha-obra-ct">${obra.contrato||'S/N'}</div>
-      <div class="ficha-obra-desc">${obra.nome}${obra.dimensao?' — '+obra.dimensao:''}${obra.avFisico>0?' — '+obra.avFisico+'% de avanço.':''}</div>
-    </div>`;
-  }
-
-  // Obras concluídas: da planilha ou das encontradas
-  const concluiIdxRef = c.obrasConcluidas.length ? c.obrasConcluidas : concluidas.map(x=>`${x.contrato} — ${x.nome}${x.dimensao?' — '+x.dimensao:''}${x.fim?' — Conclusão: '+x.fim:''}`);
-
-  function renderConcluidas() {
-    if (!concluidas.length && !c.obrasConcluidas.length) return '<div class="vazio-estado" style="padding:1rem;font-size:0.78rem;">Nenhuma obra concluída registrada</div>';
-    const list = concluidas.length ? concluidas : [];
-    if (list.length) {
-      return `<div class="concluidas-grid">${list.map((o,i)=>`
-        <div class="concluida-card">
-          <div class="concluida-num">${String(i+1).padStart(2,'0')}</div>
-          <div class="concluida-info">
-            <div class="concluida-titulo">${o.nome}</div>
-            <div class="concluida-ct">${o.contrato||'S/N'}</div>
-            <div class="concluida-desc">${o.descricao||o.nome}</div>
-            ${o.dimensao?`<div class="concluida-dim" style="margin-top:0.2rem;">📏 ${o.dimensao}</div>`:''}
-          </div>
-          <div class="concluida-meta">
-            ${o.valor?`<div class="concluida-valor">${fmtValor(o.valor)}</div>`:''}
-            ${o.fim?`<div class="concluida-data">✅ ${o.fim}</div>`:''}
-          </div>
-        </div>`).join('')}</div>`;
-    }
-    // fallback: texto cru da planilha
-    return `<div class="concluidas-grid">${c.obrasConcluidas.map((t,i)=>`
-      <div class="concluida-card">
-        <div class="concluida-num">${String(i+1).padStart(2,'0')}</div>
-        <div class="concluida-info"><div class="concluida-desc">${t}</div></div>
-      </div>`).join('')}</div>`;
-  }
+  // Serviços
+  const iconServ = {'terraplan':'⛏️','paviment':'🛣️','drenag':'💧','sinaliz':'🚦','demoli':'🏚️','urbaniz':'🌿','estrutur':'🔩','fundaç':'🏗️','alvenaria':'🧱','instalaç':'⚡','acabament':'🎨','flutuante':'⚓','passarela':'🌉','deslocam':'🪄','conserv':'🔨','manutenc':'🔧'};
+  function iServ(s) { const sl=s.toLowerCase(); for(const[k,v] of Object.entries(iconServ)) if(sl.includes(k)) return v; return '🔧'; }
+  const servicosTags = c.servicos.length
+    ? c.servicos.map(s=>`<div class="stag">${iServ(s)} ${s}</div>`).join('')
+    : '';
 
   document.getElementById('modalDoc').innerHTML = `
     <!-- TOOLBAR -->
@@ -970,46 +903,38 @@ function abrirBriefing(id) {
       </div>
     </div>
 
-    <!-- CAPA -->
+    <!-- CAPA: baseada no CT/CV -->
     <div class="brief-capa">
       <div class="brief-capa-inner">
         <div class="brief-capa-top">
-          <div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
             <div class="brief-tipo-pill">${tipo.icon} ${tipo.label}</div>
+            <div class="brief-tipo-pill" style="background:rgba(245,166,35,0.2);border-color:rgba(245,166,35,0.4);color:#F5A623;">${modInfo.icon} ${modInfo.label}</div>
           </div>
-          <div class="brief-data-pill">Atualizado em: ${c.atualizado}</div>
+          <div class="brief-data-pill">Atualizado: ${c.atualizado}</div>
         </div>
-        <div class="brief-municipio">${mun||c.nome}</div>
-        <div class="brief-contrato-label">${mun?'Briefing de Obras · '+mun:'Secretaria de Infraestrutura do Amazonas'}</div>
+        <div class="brief-municipio" style="font-size:clamp(1rem,3vw,1.6rem);line-height:1.3;margin-bottom:0.4rem;">${c.nome}</div>
+        <div class="brief-contrato-label" style="font-size:0.9rem;font-weight:700;color:rgba(255,255,255,0.8);">${c.contrato||'Sem número'}${c.municipio?' · '+c.municipio:''}</div>
       </div>
-      <!-- Três blocos: Total | Investimentos | Empregos -->
-      <div class="brief-resumo-grid">
+      <!-- 4 stats da obra -->
+      <div class="brief-resumo-grid" style="grid-template-columns:repeat(4,1fr);">
         <div class="brief-resumo-bloco">
-          <div class="brief-resumo-label">🗂️ Total de Obras</div>
-          <div class="brief-resumo-val">${totalObrasN} obras</div>
-          <div class="brief-resumo-sub">
-            <div class="brief-resumo-sub-item">A Inaugurar: <b>${inaugurar.length}</b></div>
-            <div class="brief-resumo-sub-item">Nova Obra: <b>${novas.length}</b></div>
-            <div class="brief-resumo-sub-item">Vigentes: <b>${vigentes.length}</b></div>
-            <div class="brief-resumo-sub-item">Concluídas: <b>${concluidas.length}</b></div>
-          </div>
+          <div class="brief-resumo-label">💰 Valor Global</div>
+          <div class="brief-resumo-val" style="font-size:0.95rem;">${fmtValor(c.valor)||'—'}</div>
+          ${c.empregos?`<div class="brief-resumo-sub"><div class="brief-resumo-sub-item">Empregos: <b>${c.empregos}</b></div></div>`:''}
         </div>
         <div class="brief-resumo-bloco">
-          <div class="brief-resumo-label">💰 Investimentos</div>
-          <div class="brief-resumo-val" style="font-size:1rem;">${investTotal||'—'}</div>
-          <div class="brief-resumo-sub">
-            <div class="brief-resumo-sub-item">A Inaugurar: <b>R$ —</b></div>
-            <div class="brief-resumo-sub-item">Vigentes: <b>${vigentes.reduce((a,x)=>{const v=parseFloat((x.valor||'').replace(/[^0-9]/g,''));return v?a+v:a},0)>0?'R$ '+vigentes.reduce((a,x)=>{const v=parseFloat((x.valor||'').replace(/[^0-9]/g,''));return v?a+v:a},0).toLocaleString('pt-BR'):'—'}</b></div>
-            <div class="brief-resumo-sub-item">Concluídas: <b>${concluidas.reduce((a,x)=>{const v=parseFloat((x.valor||'').replace(/[^0-9]/g,''));return v?a+v:a},0)>0?'R$ '+concluidas.reduce((a,x)=>{const v=parseFloat((x.valor||'').replace(/[^0-9]/g,''));return v?a+v:a},0).toLocaleString('pt-BR'):'—'}</b></div>
-          </div>
+          <div class="brief-resumo-label">📏 Dimensão</div>
+          <div class="brief-resumo-val" style="font-size:1.1rem;">${c.dimensao||'—'}</div>
+          ${c.segmento?`<div class="brief-resumo-sub"><div class="brief-resumo-sub-item">${c.segmento}</div></div>`:''}
         </div>
         <div class="brief-resumo-bloco">
-          <div class="brief-resumo-label">👷 Empregos Gerados</div>
-          <div class="brief-resumo-val">${empTotal>0?empTotal.toLocaleString('pt-BR')+(c.totalEmpregos||'').includes('dire')?'':' diretos e indiretos':c.empregos||'—'}</div>
-          <div class="brief-resumo-sub">
-            <div class="brief-resumo-sub-item">Vigentes: <b>${vigentes.reduce((a,x)=>{const v=parseInt((x.empregos||'0').replace(/\D/g,''));return v?a+v:a},0)||'—'}</b></div>
-            <div class="brief-resumo-sub-item">Concluídas: <b>${concluidas.reduce((a,x)=>{const v=parseInt((x.empregos||'0').replace(/\D/g,''));return v?a+v:a},0)||'—'}</b></div>
-          </div>
+          <div class="brief-resumo-label">⚙️ Avanço Físico</div>
+          <div class="brief-resumo-val" style="font-size:1.6rem;color:${pFis>=100?'#22c55e':pFis>0?'#4ade80':'rgba(255,255,255,0.4)'};">${pFis>0?pFis+'%':'—'}</div>
+        </div>
+        <div class="brief-resumo-bloco" style="border-right:none;">
+          <div class="brief-resumo-label">💳 Avanço Financeiro</div>
+          <div class="brief-resumo-val" style="font-size:1.6rem;color:${pFin>=100?'#60a5fa':pFin>0?'#93c5fd':'rgba(255,255,255,0.4)'};">${pFin>0?pFin+'%':'—'}</div>
         </div>
       </div>
     </div>
@@ -1017,174 +942,106 @@ function abrirBriefing(id) {
     <!-- STATUS BAR -->
     <div class="brief-statusbar">
       <div class="sbar-item">${chipStatus(c.status)}</div>
-      <div class="sbar-item">${chipModalidade(c.modalidade)}</div>
       ${c.contrato?`<div class="sbar-item">📋 <strong>${c.contrato}</strong></div>`:''}
-      ${periodo?`<div class="sbar-item">📅 <strong>${periodo}</strong></div>`:''}
+      ${c.municipio?`<div class="sbar-item">📍 ${c.municipio}${c.municipio2?' / '+c.municipio2:''}</div>`:''}
+      ${periodo?`<div class="sbar-item">📅 ${periodo}</div>`:''}
       ${c.empresa?`<div class="sbar-item">🏢 ${c.empresa}</div>`:''}
     </div>
 
     <!-- BODY -->
     <div class="brief-body">
 
-      <!-- FICHA TÉCNICA DO MUNICÍPIO -->
+      <!-- IDENTIFICAÇÃO -->
       <div class="brief-section">
-        <div class="brief-section-title">🗂️ Ficha Técnica do Município</div>
-        <div class="ficha-tecnica">
-          <div class="ficha-header">
-            <div class="ficha-col-header"><span class="ficha-arrow"></span>Obra a Inaugurar: ${inaugurar.length}</div>
-            <div class="ficha-col-header"><span class="ficha-arrow"></span>Nova Obra: ${novas.length}</div>
-            <div class="ficha-col-header"><span class="ficha-arrow"></span>Obra${vigentes.length!==1?'s':''} Vigente${vigentes.length!==1?'s':''}: ${vigentes.length}</div>
-            <div class="ficha-col-header"><span class="ficha-arrow"></span>Obras Concluídas: ${concluidas.length}</div>
+        <div class="brief-section-title">📋 Identificação do ${c.modalidade==='CV'?'Convênio':'Contrato'}</div>
+        <div class="obra-meta-grid" style="grid-template-columns:repeat(3,1fr);">
+          <div class="obra-meta-item destaque">
+            <div class="obra-meta-label">Nº do ${c.modalidade==='CV'?'Convênio':'Contrato'}</div>
+            <div class="obra-meta-val" style="font-size:1rem;font-weight:800;color:var(--azul);">${c.contrato||'—'}</div>
           </div>
-          <div class="ficha-body">
-            <div class="${inaugurar.length?'ficha-col-body':'ficha-vazio'}">
-              ${inaugurar.length ? inaugurar.map(fichaObra).join('') : '—'}
-            </div>
-            <div class="${novas.length?'ficha-col-body':'ficha-vazio'}">
-              ${novas.length ? novas.map(fichaObra).join('') : '—'}
-            </div>
-            <div class="${vigentes.length?'ficha-col-body':'ficha-vazio'}">
-              ${vigentes.length ? vigentes.map(fichaObra).join('') : '—'}
-            </div>
-            <div class="${concluidas.length||c.obrasConcluidas.length?'ficha-col-body':'ficha-vazio'}">
-              ${concluidas.length
-                ? concluidas.map((o,i)=>`<div class="ficha-obra-item"><div class="ficha-obra-ct">${o.contrato}</div><div class="ficha-obra-desc">${o.nome}${o.dimensao?' — '+o.dimensao:''}${o.fim?' — Conclusão: '+o.fim:''}</div></div>`).join('')
-                : c.obrasConcluidas.length
-                  ? c.obrasConcluidas.map(t=>`<div class="ficha-obra-item"><div class="ficha-obra-desc">${t}</div></div>`).join('')
-                  : '—'
-              }
-            </div>
+          <div class="obra-meta-item verde">
+            <div class="obra-meta-label">Valor Global da Obra</div>
+            <div class="obra-meta-val verde">${fmtValor(c.valor)||'—'}</div>
           </div>
+          <div class="obra-meta-item">
+            <div class="obra-meta-label">Dimensão / Extensão</div>
+            <div class="obra-meta-val">${c.dimensao||'—'}</div>
+          </div>
+          ${c.empregos?`<div class="obra-meta-item"><div class="obra-meta-label">Empregos Gerados</div><div class="obra-meta-val">${c.empregos}</div></div>`:''}
+          ${periodo?`<div class="obra-meta-item"><div class="obra-meta-label">Período de Execução</div><div class="obra-meta-val">${periodo}</div></div>`:''}
+          ${c.empresa?`<div class="obra-meta-item"><div class="obra-meta-label">Contratada / Convenente</div><div class="obra-meta-val">${c.empresa}</div></div>`:''}
+          ${c.fiscal?`<div class="obra-meta-item"><div class="obra-meta-label">Fiscal</div><div class="obra-meta-val">${c.fiscal}</div></div>`:''}
+          ${c.fonteRecurso?`<div class="obra-meta-item"><div class="obra-meta-label">Fonte do Recurso</div><div class="obra-meta-val">${c.fonteRecurso}</div></div>`:''}
+          ${c.segmento?`<div class="obra-meta-item"><div class="obra-meta-label">Segmento</div><div class="obra-meta-val">${c.segmento}</div></div>`:''}
+          ${c.pago?`<div class="obra-meta-item"><div class="obra-meta-label">Total Pago</div><div class="obra-meta-val">${fmtValor(c.pago)}</div></div>`:''}
+          ${c.empenhado?`<div class="obra-meta-item"><div class="obra-meta-label">Empenhado</div><div class="obra-meta-val">${fmtValor(c.empenhado)}</div></div>`:''}
+          ${c.liberado?`<div class="obra-meta-item"><div class="obra-meta-label">Liberado</div><div class="obra-meta-val">${fmtValor(c.liberado)}</div></div>`:''}
+          ${c.localizacao?`<div class="obra-meta-item full"><div class="obra-meta-label">Localização</div><div class="obra-meta-val">${c.localizacao}</div></div>`:''}
         </div>
       </div>
 
-      <!-- OBRA PRINCIPAL: VIGENTES -->
-      ${vigentes.length ? `
+      <!-- SITUAÇÃO -->
       <div class="brief-section">
-        <div class="brief-section-title">🏗️ ${vigentes.length} Obra${vigentes.length!==1?'s':''} Vigente${vigentes.length!==1?'s':''}</div>
-        ${vigentes.map((o,i)=>{
-          const oTipo = TIPOS[o.tipo]||TIPOS.viario;
-          const oFis  = Math.min(o.avFisico,100);
-          const oFin  = Math.min(o.avFinanceiro,100);
-          let ositClasse='andamento', ositIcon='🟢';
-          if(o.status==='paralisada'){ositClasse='paralisada';ositIcon='⚠️';}
-          const oServArr = o.servicos.length?o.servicos:c.servicos;
-          const oServConcl = o.servicosConcluidos.length?o.servicosConcluidos:c.servicosConcluidos;
-          const oServTags = oServArr.map(s=>`<div class="stag">${iServ(s)} ${s}</div>`).join('')||`<div class="stag">🔧 Consultar contrato</div>`;
-          const oServConclTags = oServConcl.length
-            ? `<div style="margin-top:0.75rem;"><div class="obra-box-label" style="margin-bottom:0.4rem;">✅ Serviços Concluídos</div><div class="servicos-tags">${oServConcl.map(s=>`<div class="stag stag-concluido">✔ ${s}</div>`).join('')}</div></div>`
-            : '';
-          const oPeriodo = (o.inicio&&o.fim)?`${o.inicio} → ${o.fim}`:o.execucao||'';
-          return `
-          <div class="obra-card">
-            <div class="obra-card-header">
-              <div>
-                <div style="margin-bottom:0.35rem;display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
-                  <span class="obra-num-badge">Obra ${String(i+1).padStart(2,'0')}</span>
-                  ${chipModalidade(o.modalidade)}
-                </div>
-                <div class="obra-titulo">${o.nome}</div>
-                <div class="obra-descricao">${o.descricao||o.nome}</div>
-              </div>
-              ${chipStatus(o.status)}
+        <div class="brief-section-title">📊 Situação da Obra</div>
+        <div class="situacao-box ${sitClasse}" style="margin-bottom:1rem;">
+          <div class="situacao-icon">${sitIcon}</div>
+          <div>
+            <div class="situacao-label">${STATUS_LABEL[c.status]||c.status}</div>
+            <div class="situacao-text">${c.situacao||c.situacaoReal||'—'}</div>
+          </div>
+        </div>
+
+        ${(pFis>0||pFin>0)?`
+        <div class="progresso-wrap">
+          ${pFis>0?`
+          <div class="progresso-item">
+            <div class="progresso-head">
+              <div class="progresso-label">⚙️ Avanço Físico Executado</div>
+              <div class="progresso-pct fisico">${pFis}%</div>
             </div>
-            <div class="obra-card-body">
-
-              <!-- Situação -->
-              <div class="situacao-box ${ositClasse}">
-                <div class="situacao-icon">${ositIcon}</div>
-                <div>
-                  <div class="situacao-label">${STATUS_LABEL[o.status]}</div>
-                  <div class="situacao-text">${o.situacao||'Obra em execução.'}</div>
-                </div>
-              </div>
-
-              <!-- Meta grid -->
-              <div class="obra-meta-grid">
-                <div class="obra-meta-item destaque">
-                  <div class="obra-meta-label">Nº do Contrato</div>
-                  <div class="obra-meta-val">${o.contrato||'—'}</div>
-                </div>
-                <div class="obra-meta-item verde">
-                  <div class="obra-meta-label">Valor Global da Obra</div>
-                  <div class="obra-meta-val verde">${fmtValor(o.valor)||'—'}</div>
-                </div>
-                <div class="obra-meta-item">
-                  <div class="obra-meta-label">Dimensão / Extensão</div>
-                  <div class="obra-meta-val">${o.dimensao||'—'}</div>
-                </div>
-                <div class="obra-meta-item">
-                  <div class="obra-meta-label">Empregos Gerados</div>
-                  <div class="obra-meta-val">${o.empregos||'—'}</div>
-                </div>
-                <div class="obra-meta-item">
-                  <div class="obra-meta-label">Período de Execução</div>
-                  <div class="obra-meta-val">${oPeriodo||'—'}</div>
-                </div>
-                ${o.empresa?`<div class="obra-meta-item"><div class="obra-meta-label">Contratada</div><div class="obra-meta-val">${o.empresa}</div></div>`:'<div></div>'}
-                ${o.pago?`<div class="obra-meta-item"><div class="obra-meta-label">Total Pago</div><div class="obra-meta-val">${fmtValor(o.pago)}</div></div>`:''}
-                ${o.empenhado?`<div class="obra-meta-item"><div class="obra-meta-label">Empenhado</div><div class="obra-meta-val">${fmtValor(o.empenhado)}</div></div>`:''}
-                ${o.liberado?`<div class="obra-meta-item"><div class="obra-meta-label">Liberado</div><div class="obra-meta-val">${fmtValor(o.liberado)}</div></div>`:''}
-                ${o.fiscal?`<div class="obra-meta-item"><div class="obra-meta-label">Fiscal</div><div class="obra-meta-val">${o.fiscal}</div></div>`:''}
-                ${o.fonteRecurso?`<div class="obra-meta-item"><div class="obra-meta-label">Fonte do Recurso</div><div class="obra-meta-val">${o.fonteRecurso}</div></div>`:''}
-                ${o.segmento?`<div class="obra-meta-item"><div class="obra-meta-label">Segmento</div><div class="obra-meta-val">${o.segmento}</div></div>`:''}
-                ${o.localizacao?`<div class="obra-meta-item full"><div class="obra-meta-label">Localização</div><div class="obra-meta-val">${o.localizacao}</div></div>`:''}
-              </div>
-
-              <!-- BARRAS DE PROGRESSO -->
-              ${(oFis>0||oFin>0)?`
-              <div class="progresso-wrap">
-                ${oFis>0?`
-                <div class="progresso-item">
-                  <div class="progresso-head">
-                    <div class="progresso-label">⚙️ Avanço Físico Executado</div>
-                    <div class="progresso-pct fisico">${oFis}%</div>
-                  </div>
-                  <div class="progresso-trilha"><div class="progresso-barra ${o.status==='concluida'?'concluido':'fisico'}" style="width:0" data-target="${oFis}"></div></div>
-                  <div class="progresso-detalhe">${oFis>=100?'Execução física completa':oFis>=80?'Etapa final de execução':oFis>=50?'Acima da metade executado':'Em andamento — fase inicial/intermediária'}</div>
-                </div>`:''}
-                ${oFin>0?`
-                <div class="progresso-item">
-                  <div class="progresso-head">
-                    <div class="progresso-label">💰 Total Pago / Avanço Financeiro</div>
-                    <div class="progresso-pct financeiro">${oFin}%</div>
-                  </div>
-                  <div class="progresso-trilha"><div class="progresso-barra ${o.status==='concluida'?'concluido':'financeiro'}" style="width:0" data-target="${oFin}"></div></div>
-                  <div class="progresso-detalhe">${oFin>=100?'Contrato quitado':'Pagamentos conforme medições e cronograma'}</div>
-                </div>`:''}
-              </div>`:''}
-
-              <!-- Objetivo + Estrutura -->
-              ${(o.objetivo||o.estrutura)?`
-              <div class="obra-2col">
-                ${o.objetivo?`<div class="obra-box"><div class="obra-box-label">🎯 Objetivo</div><div class="obra-box-text">${o.objetivo}</div></div>`:''}
-                ${o.estrutura?`<div class="obra-box"><div class="obra-box-label">🔩 Estrutura / Especificações</div><div class="obra-box-text">${o.estrutura}</div></div>`:''}
-              </div>`:''}
-
-              <!-- Serviços -->
-              <div class="servicos-wrap">
-                <div class="obra-box-label" style="margin-bottom:0.45rem;">⚙️ Serviços do Contrato</div>
-                <div class="servicos-tags">${oServTags}</div>
-                ${oServConclTags}
-              </div>
-
-              ${o.obs?`
-              <div class="situacao-box paralisada" style="margin-top:0.75rem;margin-bottom:0;">
-                <div class="situacao-icon">📌</div>
-                <div><div class="situacao-label">Observação</div><div class="situacao-text">${o.obs}</div></div>
-              </div>`:''}
-
+            <div class="progresso-trilha"><div class="progresso-barra ${c.status==='concluida'?'concluido':'fisico'}" style="width:0" data-target="${pFis}"></div></div>
+            <div class="progresso-detalhe">${pFis>=100?'Execução física completa':pFis>=80?'Etapa final':pFis>=50?'Acima da metade':'Em andamento'}</div>
+          </div>`:''}
+          ${pFin>0?`
+          <div class="progresso-item">
+            <div class="progresso-head">
+              <div class="progresso-label">💰 Avanço Financeiro</div>
+              <div class="progresso-pct financeiro">${pFin}%</div>
             </div>
-          </div>`;
-        }).join('')}
-      </div>` : ''}
+            <div class="progresso-trilha"><div class="progresso-barra ${c.status==='concluida'?'concluido':'financeiro'}" style="width:0" data-target="${pFin}"></div></div>
+            <div class="progresso-detalhe">${pFin>=100?'Contrato quitado':'Conforme medições e cronograma'}</div>
+          </div>`:''}
+        </div>`:''}
+      </div>
 
-      <!-- OBRAS CONCLUÍDAS -->
-      ${(concluidas.length||c.obrasConcluidas.length) ? `
+      <!-- DESCRIÇÃO -->
+      ${c.descricao?`
       <div class="brief-section">
-        <div class="brief-section-title">✅ ${concluidas.length||c.obrasConcluidas.length} Obras Concluídas</div>
-        ${renderConcluidas()}
-      </div>` : ''}
+        <div class="brief-section-title">📝 Descrição / Objeto</div>
+        <div class="obra-box" style="background:var(--cinza-bg);border:1px solid var(--borda);border-radius:9px;padding:1rem 1.1rem;">
+          <div class="obra-box-text" style="font-size:0.88rem;line-height:1.65;">${c.descricao}</div>
+        </div>
+      </div>`:''}
+
+      <!-- SERVIÇOS -->
+      ${servicosTags?`
+      <div class="brief-section">
+        <div class="brief-section-title">⚙️ Serviços do ${c.modalidade==='CV'?'Convênio':'Contrato'}</div>
+        <div class="servicos-tags">${servicosTags}</div>
+      </div>`:''}
+
+      <!-- CONCLUSÃO (se concluída) -->
+      ${c.conclusao?`
+      <div class="brief-section">
+        <div class="brief-section-title">✅ Conclusão</div>
+        <div class="situacao-box concluida">
+          <div class="situacao-icon">✅</div>
+          <div>
+            <div class="situacao-label">Obra Concluída</div>
+            <div class="situacao-text">${c.conclusao}</div>
+          </div>
+        </div>
+      </div>`:''}
 
     </div>
 
@@ -1195,8 +1052,8 @@ function abrirBriefing(id) {
         Gerado em: ${new Date().toLocaleDateString('pt-BR')} · Planejamento e Controle de Obras
       </div>
       <div class="brief-footer-r">
-        Briefing de Obra · Documento Interno<br>
-        ${c.contrato||mun||''}
+        ${modInfo.label} · ${c.contrato||'—'}<br>
+        ${c.municipio||''}
       </div>
     </div>
   `;
