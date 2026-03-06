@@ -206,6 +206,7 @@
     .obra-meta-item { background: var(--cinza-bg); border: 1px solid var(--borda); border-radius: 8px; padding: 0.85rem 1rem; }
     .obra-meta-item.destaque { background: var(--azul-claro); border-color: var(--azul-borda); }
     .obra-meta-item.verde { background: var(--verde-cl); border-color: var(--verde-brd); }
+    .obra-meta-item.full { grid-column: 1 / -1; }
     .obra-meta-label { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cinza-aux); margin-bottom: 0.3rem; }
     .obra-meta-val { font-size: 0.88rem; font-weight: 700; color: var(--cinza-txt); line-height: 1.3; }
     .obra-meta-val.big { font-size: 1.15rem; font-weight: 900; color: var(--azul); }
@@ -292,15 +293,33 @@
 
     /* ── PRINT ── */
     @media print {
-      body { background: #fff; }
-      .modal-overlay { position: static !important; display: block !important; padding: 0; background: none !important; backdrop-filter: none !important; overflow: visible !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { background: #fff; margin: 0; padding: 0; }
+      .modal-overlay { position: static !important; display: block !important; padding: 0 !important; background: none !important; backdrop-filter: none !important; overflow: visible !important; }
       .modal-doc { max-width: 100%; border-radius: 0; box-shadow: none !important; animation: none !important; }
       .modal-toolbar, .btn-pdf, .btn-fechar { display: none !important; }
       .site-header, .topbar, .page-hero, .hero-wave, .main-wrap, .site-footer { display: none !important; }
-      .brief-capa, .ficha-header, .ficha-col-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .progresso-barra, .progresso-trilha { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .obra-num-badge, .contrato-tipo-icon, .modal-toolbar, .concluida-num { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .brief-resumo-bloco { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      /* Força cor de fundo azul na capa */
+      .brief-capa { background: #002D72 !important; color: #fff !important; }
+      .brief-resumo-grid { background: #002D72 !important; }
+      .brief-resumo-bloco { background: #002D72 !important; border-color: rgba(255,255,255,0.1) !important; }
+      .brief-resumo-label { color: rgba(255,255,255,0.6) !important; }
+      .brief-resumo-val { color: #fff !important; }
+      .brief-resumo-sub-item { color: rgba(255,255,255,0.55) !important; }
+      .brief-resumo-sub-item b { color: rgba(255,255,255,0.9) !important; }
+      .brief-municipio { color: #fff !important; }
+      .brief-contrato-label { color: rgba(255,255,255,0.55) !important; }
+      .brief-data-pill { background: rgba(255,255,255,0.1) !important; color: rgba(255,255,255,0.75) !important; border-color: rgba(255,255,255,0.2) !important; }
+      .brief-tipo-pill { background: rgba(245,166,35,0.2) !important; color: #F5A623 !important; border-color: rgba(245,166,35,0.4) !important; }
+      /* Ficha técnica */
+      .ficha-header { background: #002D72 !important; }
+      .ficha-col-header { color: #fff !important; border-color: rgba(255,255,255,0.15) !important; }
+      /* Badges */
+      .obra-num-badge { background: #002D72 !important; color: #fff !important; }
+      .concluida-num { background: #475569 !important; color: #fff !important; }
+      /* Ficha 4 colunas no print */
+      .ficha-header, .ficha-body { grid-template-columns: repeat(4,1fr) !important; }
+      @page { margin: 1cm; size: A4; }
     }
 
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
@@ -358,13 +377,21 @@
       </div>
     </div>
     <div class="card-body">
-      <div class="busca-grid">
+      <div class="busca-grid" style="grid-template-columns: 1fr 1fr 1fr;">
         <div class="field-group">
           <div class="field-label">Pesquisar por CT/CV ou nome da obra</div>
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
             <input type="text" id="inputBusca" placeholder="Ex: CT-07/2024, Estrada Ari Antunes, Ramal..." oninput="filtrar()" />
           </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Modalidade</div>
+          <select class="field-select" id="selectModalidade" onchange="filtrar()">
+            <option value="">📄 Todos — CT e CV</option>
+            <option value="CT">📋 Contrato SEINFRA (CT)</option>
+            <option value="CV">🤝 Convênio (CV)</option>
+          </select>
         </div>
         <div class="field-group">
           <div class="field-label">Filtrar por status</div>
@@ -442,6 +469,25 @@ const TIPOS = {
   aeroporto:   { icon:'✈️', label:'Aeroporto'   },
 };
 
+// Modalidade: Contrato SEINFRA (CT) ou Convênio (CV)
+function detectarModalidade(numCt='') {
+  const n = norm(numCt);
+  if (n.startsWith('ct') || n.includes('ct-') || n.includes('ct/')) return 'CT';
+  if (n.startsWith('cv') || n.includes('cv-') || n.includes('cv/')) return 'CV';
+  return '';
+}
+
+const MODALIDADE_INFO = {
+  'CT': { label: 'Contrato SEINFRA', icon: '📋', cor: '#002D72', corCl: '#EBF0FA', corBrd: '#C4D0E8' },
+  'CV': { label: 'Convênio',         icon: '🤝', cor: '#007B3E', corCl: '#E6F4ED', corBrd: 'rgba(0,123,62,0.3)' },
+  '':   { label: 'Instrumento',      icon: '📄', cor: '#475569', corCl: '#F1F5F9', corBrd: '#CBD5E1' },
+};
+
+function chipModalidade(mod) {
+  const m = MODALIDADE_INFO[mod] || MODALIDADE_INFO[''];
+  return `<span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.68rem;font-weight:700;padding:0.22em 0.75em;border-radius:100px;background:${m.corCl};border:1px solid ${m.corBrd};color:${m.cor};white-space:nowrap;">${m.icon} ${m.label}</span>`;
+}
+
 function detectarTipo(nome='') {
   const n = nome.toLowerCase();
   if (n.includes('flutuante')||n.includes('terminal')||n.includes('porto')||n.includes('embarcad')||n.includes('flutu')) return 'hidroviario';
@@ -453,7 +499,6 @@ function detectarTipo(nome='') {
 }
 
 const STATUS_LABEL = { vigente:'Em Andamento', nova:'Nova Obra', concluida:'Concluída', paralisada:'Paralisada', inaugurar:'A Inaugurar' };
-const STATUS_ICON  = { vigente:'🟢', nova:'🔵', concluida:'⚫', paralisada:'🟡', inaugurar:'🟣' };
 
 function detectarStatus(s='') {
   const v = s.toLowerCase();
@@ -487,8 +532,26 @@ function parseCSV(text) {
   return lines;
 }
 
+function norm(s) {
+  // Normaliza: minúsculo, remove acentos, substitui º/ª por 'o'/'a', remove espaços duplos
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // remove acentos
+    .replace(/\u00ba/g,'o').replace(/\u00aa/g,'a')   // º → o, ª → a
+    .replace(/\s+/g,' ').trim();
+}
 function idxOf(h,...terms) {
-  for (const t of terms) { const i=h.findIndex(x=>x.toLowerCase().includes(t.toLowerCase())); if(i>=0) return i; }
+  const hn = h.map(norm);
+  // 1) Match exato normalizado
+  for (const t of terms) {
+    const i = hn.findIndex(x => x === norm(t));
+    if (i >= 0) return i;
+  }
+  // 2) Match parcial normalizado
+  for (const t of terms) {
+    const nt = norm(t);
+    const i = hn.findIndex(x => x.includes(nt));
+    if (i >= 0) return i;
+  }
   return -1;
 }
 function valAt(row,idx) { return (idx>=0&&row[idx]) ? row[idx].replace(/^"|"$/g,'').trim() : ''; }
@@ -520,76 +583,159 @@ async function carregarDados() {
     console.log('📋 Colunas encontradas:', h);
     // Exibe as colunas encontradas para debug (some após 10s)
     const dbg = document.createElement('div');
-    dbg.style.cssText='position:fixed;bottom:1rem;right:1rem;background:#002D72;color:#fff;font-size:11px;padding:10px 14px;border-radius:8px;z-index:9999;max-width:340px;line-height:1.6;';
-    dbg.innerHTML = `<strong>✅ Planilha carregada — ${rows.length-1} linhas</strong><br>Colunas: ${h.slice(0,8).join(' | ')}${h.length>8?' …':''}`;
+    dbg.style.cssText='position:fixed;bottom:1rem;right:1rem;background:#002D72;color:#fff;font-size:11px;padding:10px 14px;border-radius:8px;z-index:9999;max-width:380px;line-height:1.7;';
+    dbg.innerHTML = `<strong>✅ ${rows.length-1} linhas carregadas</strong><br>`
+      + `Município → col ${I.municipio} (${I.municipio>=0?h[I.municipio]:'❌'})<br>`
+      + `Contrato → col ${I.contrato} (${I.contrato>=0?h[I.contrato]:'❌'})<br>`
+      + `%Físico → col ${I.avFisico} (${I.avFisico>=0?h[I.avFisico]:'❌'})<br>`
+      + `Status → col ${I.situacaoEobras} (${I.situacaoEobras>=0?h[I.situacaoEobras]:'❌'})`;
     document.body.appendChild(dbg);
-    setTimeout(()=>dbg.remove(), 8000);
+    setTimeout(()=>dbg.remove(), 12000);
 
-    // Mapeamento amplo — cobre cabeçalhos como "SITUAÇÃO EOBRAS", "SITUAÇÃO REOBRAS", etc.
+    // Mapeamento EXATO baseado nas colunas reais da PLANILHA_GERAL
     const I = {
-      municipio:        idxOf(h,'município','municipio','munic','mun.'),
-      nome:             idxOf(h,'nome da obra','nome obra','objeto do contrato','objeto contrato','nome','objeto','descrição da obra','descricao da obra'),
-      contrato:         idxOf(h,'nº do contrato','número do contrato','nº contrato','num contrato','contrato','ct-','cv-','número'),
-      valor:            idxOf(h,'valor do contrato','valor contrato','valor global','valor da obra','valor obra','valor'),
-      valorMunicipio:   idxOf(h,'valor no município','valor município','valor munic','valor local'),
-      dimensao:         idxOf(h,'dimensão','extensão','extensao','km total','dimensao','área','area','m²','metragem'),
-      empregos:         idxOf(h,'empregos gerados','empregos a gerar','empregos','emprego'),
-      execucao:         idxOf(h,'prazo de execução','prazo execução','prazo','execução','execucao','período','periodo'),
-      avFisico:         idxOf(h,'avanço físico','avanco fisico','% físico','% fisico','fisico','físico executado','% executado','avanço'),
-      avFinanceiro:     idxOf(h,'avanço financeiro','avanco financeiro','% financeiro','financeiro executado','% pago','total pago','pago','financeiro'),
-      situacao:         idxOf(h,'situação eobras','situacao eobras','situação reobras','situação','situacao','status','situaçao'),
-      descricao:        idxOf(h,'descrição da obra','descricao da obra','descrição','descricao','objeto do contrato','objeto'),
-      objetivo:         idxOf(h,'objetivo da obra','objetivo'),
-      estrutura:        idxOf(h,'estrutura do pavimento','estrutura','especificação','especificaç','especifica','técnico','tecnico'),
-      servicos:         idxOf(h,'serviços do contrato','servicos do contrato','serviços','servicos','itens do contrato','itens'),
-      servicosConcluidos: idxOf(h,'serviços concluídos','servicos concluidos','serviços executados','concluídos'),
-      empresa:          idxOf(h,'empresa contratada','empresa executora','empresa','contratada','executora','razão social'),
-      inicio:           idxOf(h,'data de início','data início','data inicio','início contrato','inicio','início'),
-      fim:              idxOf(h,'previsão de conclusão','previsão conclusão','previsão','data conclusão','conclusão','término','termino','fim','prazo fim'),
-      tipo:             idxOf(h,'tipo de obra','tipo obra','tipo','modalidade','categoria'),
-      atualizado:       idxOf(h,'atualizado em','data atualização','atualizado','data atualiz','revisão'),
-      obs:              idxOf(h,'observação','observacao','obs.','obs','nota','pendências','pendencias'),
-      obrasConcluidas:  idxOf(h,'obras concluídas','obras concluidas','lista concluídas','lista de obras concluídas'),
-      totalObras:       idxOf(h,'total de obras','total obras','qtd obras','quantidade obras'),
-      totalInvest:      idxOf(h,'total investimentos','investimento total','total invest','investimentos'),
-      totalEmpregos:    idxOf(h,'total empregos','empregos totais','total de empregos'),
+      situacaoEobras:   idxOf(h,'SITUAÇÃO EOBRAS','situação eobras'),
+      situacaoReal:     idxOf(h,'SITUAÇÃO REAL','situação real'),
+      classificacao:    idxOf(h,'CLASSIFICAÇÃO','classificação'),
+      numObra:          idxOf(h,'No DA OBRA','Nº DA OBRA','no da obra','num da obra'),
+      contrato:         idxOf(h,'No DO CT/CV','Nº DO CT/CV','no do ct/cv','no ct/cv','ct/cv'),
+      nome:             idxOf(h,'OBJETO','objeto'),
+      resumo:           idxOf(h,'RESUMO DO OBJETO','resumo do objeto'),
+      municipio:        idxOf(h,'MUNICÍPIO','MUNICIPIO','municipio'),
+      municipio2:       idxOf(h,'MUNICÍPIOS 2','MUNICIPIOS 2','municipios 2'),
+      dimensao:         idxOf(h,'DIMENSÃO','dimensão'),
+      unidade:          idxOf(h,'UNIDADE','unidade'),
+      dimensaoExec:     idxOf(h,'DIMENSÃO EXECUTADA','dimensão executada'),
+      valorGlobal:      idxOf(h,'VALOR GLOBAL (INICIAL + ADITIVOS + REAJUSTES) DA OBRA','valor global (inicial + aditivos + reajustes) da obra'),
+      valorGlobalCt:    idxOf(h,'VALOR GLOBAL (INICIAL + ADITIVOS + REAJUSTES)','valor global (inicial + aditivos + reajustes)'),
+      valorInicialObra: idxOf(h,'VALOR INICIAL DA OBRA','valor inicial da obra'),
+      valorInicial:     idxOf(h,'VALOR INICIAL','valor inicial'),
+      empenhado:        idxOf(h,'EMPENHADO (R$) OBRA','empenhado (r$) obra'),
+      liberado:         idxOf(h,'LIBERADO (R$) OBRA','liberado (r$) obra'),
+      pago:             idxOf(h,'PAGO (R$) OBRA','pago (r$) obra'),
+      pagoGestaoWL:     idxOf(h,'PAGO GESTÃO WL (OBRA)','pago gestão wl (obra)'),
+      empregos:         idxOf(h,'EMPREGOS GERADOS DIRETOS','empregos gerados diretos'),
+      empresa:          idxOf(h,'CONTRATADA /CONVENENTE','contratada /convenente','contratada/convenente'),
+      empresaResumo:    idxOf(h,'CONTRATADA/CONVENENTE RESUMIDA','contratada/convenente resumida'),
+      avFinanceiro:     idxOf(h,'%FINANCEIRO','%financeiro'),
+      avFisico:         idxOf(h,'%FÍSICO','%físico'),
+      inicioVigencia:   idxOf(h,'INICIO DA VIGÊNCIA','inicio da vigência'),
+      fimVigencia:      idxOf(h,'TÉRMINO DA VIGÊNCIA','término da vigência'),
+      inicioExec:       idxOf(h,'INÍCIO DA EXECUÇÃO','início da execução'),
+      fimExec:          idxOf(h,'FIM DA EXECUÇÃO','fim da execução'),
+      diasVencimento:   idxOf(h,'DIAS PARA VENCIMENTO','dias para vencimento'),
+      fiscal:           idxOf(h,'FISCAL','fiscal'),
+      ctcv:             idxOf(h,'CT/CV','ct/cv'),
+      ano:              idxOf(h,'ANO','ano'),
+      secretaria:       idxOf(h,'SECRETARIA','secretaria'),
+      fonteRecurso:     idxOf(h,'FONTE DO RECURSO','fonte do recurso'),
+      previsaoEntrega:  idxOf(h,'PREVISÃO DE ENTREGA','previsão de entrega'),
+      conclusaoObra:    idxOf(h,'CONCLUSÃO DA OBRA','conclusão da obra'),
+      conclusaoResumo:  idxOf(h,'CONCLUSÃO RESUMIDA DA OBRA','conclusão resumida da obra'),
+      inauguracao:      idxOf(h,'INAUGURAÇÃO DA OBRA','inauguração da obra'),
+      ultimaMedicao:    idxOf(h,'ÚLTIMA MEDIÇÃO','última medição'),
+      sinalizador:      idxOf(h,'SINALIZADOR','sinalizador'),
+      localizacao:      idxOf(h,'LOCALIZAÇÃO (RAMAIS)','localização (ramais)','localização'),
+      revestimento:     idxOf(h,'REVESTIMENTO (MOBILIDADE)','revestimento (mobilidade)','revestimento'),
+      rmm:              idxOf(h,'RMM','rmm'),
+      interiorCapital:  idxOf(h,'INTERIOR/CAPITAL','interior/capital'),
+      avancoPrevisto:   idxOf(h,'AVANÇO PREVISTO ATÉ A DATA','avanço previsto até a data'),
+      tipo:             idxOf(h,'TIPO','tipo'),
+      segmento:         idxOf(h,'SEGMENTO','segmento'),
+      qtRuas:           idxOf(h,'QT RUAS','qt ruas'),
+      descServicos:     idxOf(h,'DESCRIÇÃO DE SERVIÇOS','descrição de serviços'),
+      briefing:         idxOf(h,'BRIEFING','briefing'),
+      // situação = col A (SITUAÇÃO EOBRAS) é a principal
+      situacao:         idxOf(h,'SITUAÇÃO EOBRAS','situação eobras','SITUAÇÃO REAL','situação real','situação','situacao','status'),
     };
-    console.log('🗺️ Mapeamento:', Object.fromEntries(Object.entries(I).map(([k,v])=>[k, v>=0?h[v]:'❌ não encontrado'])));
+    console.log('🗺️ Mapeamento:', Object.fromEntries(Object.entries(I).map(([k,v])=>[k, v>=0?`[${v}] ${h[v]}`:'❌'])));
 
     todosContratos = rows.slice(1).map((row,idx) => {
-      // Tenta pegar o nome; se não encontrar, usa o primeiro campo não-vazio da linha
-      let nome = valAt(row, I.nome);
-      if (!nome && I.nome < 0) nome = row.find(c=>c&&c.replace(/^"|"$/g,'').trim().length>3)||'';
+      // Nome = OBJETO; fallback = RESUMO DO OBJETO
+      let nome = valAt(row, I.nome) || valAt(row, I.resumo);
       nome = nome.replace(/^"|"$/g,'').trim();
       if (!nome) return null;
-      const situacaoRaw   = valAt(row, I.situacao);
-      const status        = detectarStatus(situacaoRaw);
-      const tipoRaw       = valAt(row, I.tipo);
-      const tipo          = tipoRaw ? detectarTipo(tipoRaw+' '+nome) : detectarTipo(nome);
-      const avFStr        = valAt(row,I.avFisico).replace(/[%\s]/g,'').replace(',','.');
-      const avFinStr      = valAt(row,I.avFinanceiro).replace(/[%\s]/g,'').replace(',','.');
-      const servicosRaw   = valAt(row, I.servicos);
-      const servArr       = servicosRaw ? servicosRaw.split(/[;\n]/).map(s=>s.trim()).filter(Boolean) : [];
-      const servConcArr   = valAt(row, I.servicosConcluidos).split(/[;\n]/).map(s=>s.trim()).filter(Boolean);
-      const obrasConcRaw  = valAt(row, I.obrasConcluidas);
-      const obrasConcArr  = obrasConcRaw ? obrasConcRaw.split(/\n|;/).map(s=>s.trim()).filter(Boolean) : [];
+
+      const situacaoRaw = valAt(row, I.situacaoEobras) || valAt(row, I.situacaoReal);
+      const status      = detectarStatus(situacaoRaw);
+
+      // Tipo de obra: usa coluna TIPO ou SEGMENTO, fallback pelo nome
+      const tipoRaw = valAt(row, I.tipo) || valAt(row, I.segmento);
+      const tipo    = tipoRaw ? detectarTipo(tipoRaw+' '+nome) : detectarTipo(nome);
+
+      // Percentuais — colunas %FÍSICO e %FINANCEIRO
+      const avFStr  = valAt(row, I.avFisico).replace(/[%\s]/g,'').replace(',','.');
+      const avFinStr= valAt(row, I.avFinanceiro).replace(/[%\s]/g,'').replace(',','.');
+
+      // Valor: prefere "VALOR GLOBAL DA OBRA", fallback "VALOR GLOBAL CT"
+      const valor = valAt(row, I.valorGlobal) || valAt(row, I.valorGlobalCt) || valAt(row, I.valorInicialObra) || valAt(row, I.valorInicial);
+
+      // Dimensão com unidade
+      const dimVal  = valAt(row, I.dimensao);
+      const dimUnit = valAt(row, I.unidade);
+      const dimensao = dimVal ? (dimUnit ? `${dimVal} ${dimUnit}` : dimVal) : '';
+
+      // Empresa: prefere resumida
+      const empresa = valAt(row, I.empresaResumo) || valAt(row, I.empresa);
+
+      // Período de execução
+      const inicioExec = valAt(row, I.inicioExec) || valAt(row, I.inicioVigencia);
+      const fimExec    = valAt(row, I.fimExec) || valAt(row, I.fimVigencia) || valAt(row, I.previsaoEntrega);
+
+      // Número do contrato: prefere "Nº DO CT/CV"
+      const contrato = valAt(row, I.contrato) || valAt(row, I.ctcv);
+      const modalidade = detectarModalidade(contrato);
+
+      // Serviços
+      const servRaw  = valAt(row, I.descServicos);
+      const servArr  = servRaw ? servRaw.split(/[;\n,]/).map(s=>s.trim()).filter(s=>s.length>2) : [];
+
+      // Conclusão
+      const conclusao = valAt(row, I.conclusaoResumo) || valAt(row, I.conclusaoObra);
 
       return {
-        id: idx, municipio: valAt(row,I.municipio), nome, tipo,
-        contrato: valAt(row,I.contrato), valor: valAt(row,I.valor),
-        valorMunicipio: valAt(row,I.valorMunicipio),
-        dimensao: valAt(row,I.dimensao), empregos: valAt(row,I.empregos),
-        execucao: valAt(row,I.execucao), status, situacao: situacaoRaw,
-        avFisico: parseFloat(avFStr)||0, avFinanceiro: parseFloat(avFinStr)||0,
-        descricao: valAt(row,I.descricao), objetivo: valAt(row,I.objetivo),
-        estrutura: valAt(row,I.estrutura), servicos: servArr,
-        servicosConcluidos: servConcArr,
-        empresa: valAt(row,I.empresa), inicio: valAt(row,I.inicio), fim: valAt(row,I.fim),
-        atualizado: valAt(row,I.atualizado)||new Date().toLocaleDateString('pt-BR'),
-        obs: valAt(row,I.obs),
-        obrasConcluidas: obrasConcArr,
-        totalObras: valAt(row,I.totalObras), totalInvest: valAt(row,I.totalInvest),
-        totalEmpregos: valAt(row,I.totalEmpregos),
+        id: idx,
+        municipio:   valAt(row, I.municipio),
+        municipio2:  valAt(row, I.municipio2),
+        nome, tipo, status, modalidade,
+        contrato,
+        numObra:     valAt(row, I.numObra),
+        valor,
+        valorGlobalCt: valAt(row, I.valorGlobalCt),
+        dimensao,
+        empregos:    valAt(row, I.empregos),
+        inicio:      inicioExec,
+        fim:         fimExec,
+        execucao:    (inicioExec && fimExec) ? `${inicioExec} → ${fimExec}` : (inicioExec||fimExec||''),
+        avFisico:    parseFloat(avFStr)||0,
+        avFinanceiro:parseFloat(avFinStr)||0,
+        situacao:    situacaoRaw,
+        situacaoReal:valAt(row, I.situacaoReal),
+        descricao:   valAt(row, I.resumo) || nome,
+        objetivo:    '',
+        estrutura:   valAt(row, I.revestimento) ? `Revestimento: ${valAt(row, I.revestimento)}` : '',
+        servicos:    servArr,
+        servicosConcluidos: [],
+        empresa,
+        atualizado:  valAt(row, I.ultimaMedicao) || new Date().toLocaleDateString('pt-BR'),
+        obs:         valAt(row, I.sinalizador),
+        obrasConcluidas: [],
+        totalObras:  '',
+        totalInvest: '',
+        totalEmpregos: '',
+        // Dados financeiros extras
+        pago:        valAt(row, I.pago),
+        empenhado:   valAt(row, I.empenhado),
+        liberado:    valAt(row, I.liberado),
+        fiscal:      valAt(row, I.fiscal),
+        fonteRecurso:valAt(row, I.fonteRecurso),
+        tipo2:       valAt(row, I.tipo),
+        segmento:    valAt(row, I.segmento),
+        conclusao,
+        localizacao: valAt(row, I.localizacao),
+        interiorCapital: valAt(row, I.interiorCapital),
+        avancoPrevisto: valAt(row, I.avancoPrevisto),
+        diasVencimento: valAt(row, I.diasVencimento),
       };
     }).filter(Boolean);
 
@@ -619,12 +765,14 @@ async function carregarDados() {
 //  FILTRAR
 // ════════════════════════════════════════════════════════
 function filtrar() {
-  const q      = document.getElementById('inputBusca').value.toLowerCase().trim();
-  const status = document.getElementById('selectStatus').value;
+  const q         = document.getElementById('inputBusca').value.toLowerCase().trim();
+  const status    = document.getElementById('selectStatus').value;
+  const modalidade= document.getElementById('selectModalidade').value;
   filtrados = todosContratos.filter(c => {
-    const mq = !q || [c.nome,c.contrato,c.municipio,c.empresa,c.descricao].some(f=>(f||'').toLowerCase().includes(q));
-    const ms = !status || c.status===status;
-    return mq && ms;
+    const mq = !q || [c.nome,c.contrato,c.municipio,c.empresa,c.descricao,c.municipio2].some(f=>(f||'').toLowerCase().includes(q));
+    const ms = !status    || c.status    === status;
+    const mm = !modalidade|| c.modalidade === modalidade;
+    return mq && ms && mm;
   });
   paginaAtual = 1;
   renderLista();
@@ -649,20 +797,25 @@ function renderLista() {
     return;
   }
 
-  lista.innerHTML = pagina.map(c => {
+    lista.innerHTML = pagina.map(c => {
     const tipo = TIPOS[c.tipo]||TIPOS.viario;
+    const modInfo = MODALIDADE_INFO[c.modalidade] || MODALIDADE_INFO[''];
     return `
       <div class="contrato-row" id="row-${c.id}" onclick="abrirBriefing(${c.id})">
         <div class="contrato-tipo-icon" title="${tipo.label}">${tipo.icon}</div>
         <div class="contrato-info">
           <div class="contrato-nome">${c.nome||'—'}</div>
           <div class="contrato-sub">
-            ${c.contrato ? `<span>📋 ${c.contrato}</span>` : ''}
+            ${c.contrato ? `<span style="font-weight:800;color:${modInfo.cor}">${modInfo.icon} ${c.contrato}</span>` : ''}
             ${c.empresa  ? `<span>🏢 ${c.empresa}</span>` : ''}
             ${c.dimensao ? `<span>📏 ${c.dimensao}</span>` : ''}
+            ${c.avFisico>0 ? `<span>⚙️ ${c.avFisico}% físico</span>` : ''}
           </div>
         </div>
-        ${c.municipio ? `<div class="contrato-municipio">${c.municipio}</div>` : ''}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;flex-shrink:0;">
+          ${c.municipio ? `<div class="contrato-municipio">${c.municipio}</div>` : ''}
+          ${chipModalidade(c.modalidade)}
+        </div>
         <button class="contrato-btn" onclick="event.stopPropagation();abrirBriefing(${c.id})">Ver Briefing →</button>
       </div>`;
   }).join('');
@@ -700,6 +853,8 @@ function irPag(n) {
 function abrirBriefing(id) {
   const c = todosContratos.find(x=>x.id===id);
   if (!c) return;
+  // Debug — log campos para diagnóstico no console
+  console.log('🔍 Briefing:', JSON.stringify({municipio:c.municipio,nome:c.nome?.slice(0,40),contrato:c.contrato,status:c.status,avFisico:c.avFisico,empresa:c.empresa?.slice(0,30)},null,2));
 
   document.querySelectorAll('.contrato-row').forEach(r=>r.classList.remove('selecionado'));
   const row = document.getElementById('row-'+id);
@@ -743,8 +898,9 @@ function abrirBriefing(id) {
   const valorMun  = fmtValor(c.valorMunicipio);
 
   // ── FICHA TÉCNICA (agrupamento por município igual ao PDF)
-  // Agrupa todos contratos do mesmo município
-  const mun = c.municipio;
+  // Sanitiza: remove valores que claramente não são nomes de município
+  const munRaw = c.municipio || '';
+  const mun = munRaw.length > 2 && munRaw.length < 60 && !munRaw.match(/^\d/) ? munRaw : '';
   const doMun = mun ? todosContratos.filter(x=>x.municipio===mun) : [c];
   const inaugurar = doMun.filter(x=>x.status==='inaugurar');
   const novas     = doMun.filter(x=>x.status==='nova');
@@ -805,6 +961,7 @@ function abrirBriefing(id) {
         <div class="modal-tb-box">SE</div>
         <div class="modal-tb-name">SEINFRA<span>/AM</span></div>
         <div class="modal-tb-pill">Briefing de Obra</div>
+        ${chipModalidade(c.modalidade)}
       </div>
       <div class="modal-toolbar-actions">
         <button class="btn-pdf" onclick="exportarPDF()">🖨️ Exportar PDF</button>
@@ -859,6 +1016,7 @@ function abrirBriefing(id) {
     <!-- STATUS BAR -->
     <div class="brief-statusbar">
       <div class="sbar-item">${chipStatus(c.status)}</div>
+      <div class="sbar-item">${chipModalidade(c.modalidade)}</div>
       ${c.contrato?`<div class="sbar-item">📋 <strong>${c.contrato}</strong></div>`:''}
       ${periodo?`<div class="sbar-item">📅 <strong>${periodo}</strong></div>`:''}
       ${c.empresa?`<div class="sbar-item">🏢 ${c.empresa}</div>`:''}
@@ -920,7 +1078,10 @@ function abrirBriefing(id) {
           <div class="obra-card">
             <div class="obra-card-header">
               <div>
-                <div style="margin-bottom:0.35rem;"><span class="obra-num-badge">Obra ${String(i+1).padStart(2,'0')}</span></div>
+                <div style="margin-bottom:0.35rem;display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+                  <span class="obra-num-badge">Obra ${String(i+1).padStart(2,'0')}</span>
+                  ${chipModalidade(o.modalidade)}
+                </div>
                 <div class="obra-titulo">${o.nome}</div>
                 <div class="obra-descricao">${o.descricao||o.nome}</div>
               </div>
@@ -944,7 +1105,7 @@ function abrirBriefing(id) {
                   <div class="obra-meta-val">${o.contrato||'—'}</div>
                 </div>
                 <div class="obra-meta-item verde">
-                  <div class="obra-meta-label">Valor do Contrato</div>
+                  <div class="obra-meta-label">Valor Global da Obra</div>
                   <div class="obra-meta-val verde">${fmtValor(o.valor)||'—'}</div>
                 </div>
                 <div class="obra-meta-item">
@@ -952,7 +1113,7 @@ function abrirBriefing(id) {
                   <div class="obra-meta-val">${o.dimensao||'—'}</div>
                 </div>
                 <div class="obra-meta-item">
-                  <div class="obra-meta-label">Empregos a Gerar</div>
+                  <div class="obra-meta-label">Empregos Gerados</div>
                   <div class="obra-meta-val">${o.empregos||'—'}</div>
                 </div>
                 <div class="obra-meta-item">
@@ -960,6 +1121,13 @@ function abrirBriefing(id) {
                   <div class="obra-meta-val">${oPeriodo||'—'}</div>
                 </div>
                 ${o.empresa?`<div class="obra-meta-item"><div class="obra-meta-label">Contratada</div><div class="obra-meta-val">${o.empresa}</div></div>`:'<div></div>'}
+                ${o.pago?`<div class="obra-meta-item"><div class="obra-meta-label">Total Pago</div><div class="obra-meta-val">${fmtValor(o.pago)}</div></div>`:''}
+                ${o.empenhado?`<div class="obra-meta-item"><div class="obra-meta-label">Empenhado</div><div class="obra-meta-val">${fmtValor(o.empenhado)}</div></div>`:''}
+                ${o.liberado?`<div class="obra-meta-item"><div class="obra-meta-label">Liberado</div><div class="obra-meta-val">${fmtValor(o.liberado)}</div></div>`:''}
+                ${o.fiscal?`<div class="obra-meta-item"><div class="obra-meta-label">Fiscal</div><div class="obra-meta-val">${o.fiscal}</div></div>`:''}
+                ${o.fonteRecurso?`<div class="obra-meta-item"><div class="obra-meta-label">Fonte do Recurso</div><div class="obra-meta-val">${o.fonteRecurso}</div></div>`:''}
+                ${o.segmento?`<div class="obra-meta-item"><div class="obra-meta-label">Segmento</div><div class="obra-meta-val">${o.segmento}</div></div>`:''}
+                ${o.localizacao?`<div class="obra-meta-item full"><div class="obra-meta-label">Localização</div><div class="obra-meta-val">${o.localizacao}</div></div>`:''}
               </div>
 
               <!-- BARRAS DE PROGRESSO -->
