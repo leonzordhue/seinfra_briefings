@@ -581,16 +581,6 @@ async function carregarDados() {
 
     const h = rows[0].map(c=>c.replace(/^"|"$/g,'').trim());
     console.log('📋 Colunas encontradas:', h);
-    // Exibe as colunas encontradas para debug (some após 10s)
-    const dbg = document.createElement('div');
-    dbg.style.cssText='position:fixed;bottom:1rem;right:1rem;background:#002D72;color:#fff;font-size:11px;padding:10px 14px;border-radius:8px;z-index:9999;max-width:380px;line-height:1.7;';
-    dbg.innerHTML = `<strong>✅ ${rows.length-1} linhas carregadas</strong><br>`
-      + `Município → col ${I.municipio} (${I.municipio>=0?h[I.municipio]:'❌'})<br>`
-      + `Contrato → col ${I.contrato} (${I.contrato>=0?h[I.contrato]:'❌'})<br>`
-      + `%Físico → col ${I.avFisico} (${I.avFisico>=0?h[I.avFisico]:'❌'})<br>`
-      + `Status → col ${I.situacaoEobras} (${I.situacaoEobras>=0?h[I.situacaoEobras]:'❌'})`;
-    document.body.appendChild(dbg);
-    setTimeout(()=>dbg.remove(), 12000);
 
     // Mapeamento EXATO baseado nas colunas reais da PLANILHA_GERAL
     const I = {
@@ -649,6 +639,17 @@ async function carregarDados() {
       situacao:         idxOf(h,'SITUAÇÃO EOBRAS','situação eobras','SITUAÇÃO REAL','situação real','situação','situacao','status'),
     };
     console.log('🗺️ Mapeamento:', Object.fromEntries(Object.entries(I).map(([k,v])=>[k, v>=0?`[${v}] ${h[v]}`:'❌'])));
+
+    // Toast de diagnóstico — some em 12s
+    const dbg = document.createElement('div');
+    dbg.style.cssText='position:fixed;bottom:1rem;right:1rem;background:#002D72;color:#fff;font-size:11px;padding:10px 14px;border-radius:8px;z-index:9999;max-width:380px;line-height:1.7;';
+    dbg.innerHTML = `<strong>✅ ${rows.length-1} linhas carregadas</strong><br>`
+      + `Município → col ${I.municipio} (${I.municipio>=0?h[I.municipio]:'❌'})<br>`
+      + `Contrato  → col ${I.contrato}  (${I.contrato>=0?h[I.contrato]:'❌'})<br>`
+      + `%Físico   → col ${I.avFisico}  (${I.avFisico>=0?h[I.avFisico]:'❌'})<br>`
+      + `Status    → col ${I.situacaoEobras} (${I.situacaoEobras>=0?h[I.situacaoEobras]:'❌'})`;
+    document.body.appendChild(dbg);
+    setTimeout(()=>dbg.remove(), 12000);
 
     todosContratos = rows.slice(1).map((row,idx) => {
       // Nome = OBJETO; fallback = RESUMO DO OBJETO
