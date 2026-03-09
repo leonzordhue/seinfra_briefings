@@ -435,33 +435,109 @@
 
     /* ── PRINT ── */
     @media print {
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      body { background: #fff; margin: 0; padding: 0; }
-      .modal-overlay { position: static !important; display: block !important; padding: 0 !important; background: none !important; backdrop-filter: none !important; overflow: visible !important; }
-      .modal-doc { max-width: 100%; border-radius: 0; box-shadow: none !important; animation: none !important; }
-      .modal-toolbar, .btn-pdf, .btn-fechar { display: none !important; }
-      .site-header, .topbar, .page-hero, .hero-wave, .main-wrap, .site-footer { display: none !important; }
-      /* Força cor de fundo azul na capa */
-      .brief-capa { background: #002D72 !important; color: #fff !important; }
-      .brief-resumo-grid { background: #002D72 !important; }
-      .brief-resumo-bloco { background: #002D72 !important; border-color: rgba(255,255,255,0.1) !important; }
+      @page { margin: 1cm; size: A4 portrait; }
+
+      /* Reset geral */
+      *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        box-shadow: none !important;
+        animation: none !important;
+        transition: none !important;
+      }
+
+      /* Esconde tudo exceto o modal */
+      body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+      .topbar, .site-header, .page-hero, .hero-wave,
+      .main-wrap, .site-footer, .btn-pdf, .btn-fechar,
+      .modal-toolbar, .modal-handle { display: none !important; }
+
+      /* Overlay: sem posicionamento fixo, sem fundo, sem scroll */
+      .modal-overlay {
+        position: static !important;
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: none !important;
+        backdrop-filter: none !important;
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+      }
+
+      /* Doc: largura total, sem bordas, sem scroll */
+      .modal-doc {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        border-radius: 0 !important;
+        border: none !important;
+      }
+
+      /* Statusbar: sem overflow horizontal */
+      .brief-statusbar {
+        flex-wrap: wrap !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        white-space: normal !important;
+        padding: 0.6rem 1.2rem !important;
+        gap: 0.5rem 1.2rem !important;
+      }
+      .sbar-item { white-space: normal !important; flex-shrink: 1 !important; }
+
+      /* Body: sem altura máxima */
+      .brief-body {
+        padding: 1.2rem 1.5rem !important;
+        overflow: visible !important;
+        height: auto !important;
+      }
+
+      /* Evita corte de seções entre páginas */
+      .brief-section { page-break-inside: avoid; break-inside: avoid; margin-bottom: 1rem !important; }
+      .obra-meta-item { page-break-inside: avoid; break-inside: avoid; }
+      .progresso-item { page-break-inside: avoid; break-inside: avoid; }
+      .situacao-box { page-break-inside: avoid; break-inside: avoid; }
+      .brief-footer { page-break-inside: avoid; break-inside: avoid; }
+
+      /* CAPA azul */
+      .brief-capa { background: #002D72 !important; }
+      .brief-capa-inner { padding: 1.2rem 1.5rem 0 !important; }
+      .brief-municipio { color: #fff !important; font-size: 1.3rem !important; }
+      .brief-contrato-label { color: rgba(255,255,255,0.6) !important; }
+      .brief-data-pill { background: rgba(255,255,255,0.12) !important; color: rgba(255,255,255,0.8) !important; border-color: rgba(255,255,255,0.2) !important; }
+      .brief-tipo-pill { background: rgba(245,166,35,0.18) !important; color: #F5A623 !important; border-color: rgba(245,166,35,0.35) !important; }
+
+      /* Grid de stats 2×2 no print */
+      .brief-resumo-grid { background: #002D72 !important; grid-template-columns: repeat(2,1fr) !important; }
+      .brief-resumo-bloco { background: #002D72 !important; border-color: rgba(255,255,255,0.12) !important; padding: 0.75rem 1rem !important; }
       .brief-resumo-label { color: rgba(255,255,255,0.6) !important; }
-      .brief-resumo-val { color: #fff !important; }
+      .brief-resumo-val { color: #fff !important; font-size: 1rem !important; }
       .brief-resumo-sub-item { color: rgba(255,255,255,0.55) !important; }
       .brief-resumo-sub-item b { color: rgba(255,255,255,0.9) !important; }
-      .brief-municipio { color: #fff !important; }
-      .brief-contrato-label { color: rgba(255,255,255,0.55) !important; }
-      .brief-data-pill { background: rgba(255,255,255,0.1) !important; color: rgba(255,255,255,0.75) !important; border-color: rgba(255,255,255,0.2) !important; }
-      .brief-tipo-pill { background: rgba(245,166,35,0.2) !important; color: #F5A623 !important; border-color: rgba(245,166,35,0.4) !important; }
-      /* Ficha técnica */
-      .ficha-header { background: #002D72 !important; }
-      .ficha-col-header { color: #fff !important; border-color: rgba(255,255,255,0.15) !important; }
-      /* Badges */
+
+      /* Meta grid: 3 colunas no print */
+      .obra-meta-grid { grid-template-columns: repeat(3,1fr) !important; gap: 0.5rem !important; }
+      .obra-meta-item { padding: 0.6rem 0.75rem !important; }
+
+      /* Barras de progresso */
+      .progresso-barra.fisico { background: #007B3E !important; }
+      .progresso-barra.financeiro { background: #002D72 !important; }
+      .progresso-barra.concluido { background: #475569 !important; }
+      .progresso-trilha { background: #e0e6f0 !important; }
+
+      /* Chips */
+      .chip-vigente { background: #e6f4ed !important; color: #007B3E !important; }
+      .chip-concluida { background: #f1f5f9 !important; color: #475569 !important; }
+      .chip-paralisada { background: #fef3dc !important; color: #7A4F00 !important; }
       .obra-num-badge { background: #002D72 !important; color: #fff !important; }
       .concluida-num { background: #475569 !important; color: #fff !important; }
-      /* Ficha 4 colunas no print */
-      .ficha-header, .ficha-body { grid-template-columns: repeat(4,1fr) !important; }
-      @page { margin: 1cm; size: A4; }
     }
 
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
@@ -1231,8 +1307,32 @@ function fecharModalFora(e) {
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') fecharModal(); });
 
 function exportarPDF() {
-  const hints = document.querySelectorAll('.btn-fechar,.btn-pdf');
-  window.print();
+  // Remove overflow e max-height que causam barra de rolagem no PDF
+  const doc = document.getElementById('modalDoc');
+  const overlay = document.getElementById('modalOverlay');
+  const prevDocStyle = doc.getAttribute('style') || '';
+  const prevOverlayStyle = overlay.getAttribute('style') || '';
+
+  doc.style.maxHeight = 'none';
+  doc.style.overflow = 'visible';
+  doc.style.overflowY = 'visible';
+  overlay.style.overflow = 'visible';
+  overlay.style.maxHeight = 'none';
+  overlay.style.height = 'auto';
+
+  // Garante que as barras de progresso estejam animadas antes de imprimir
+  document.querySelectorAll('.progresso-barra[data-target]').forEach(el=>{
+    el.style.width = el.dataset.target + '%';
+  });
+
+  setTimeout(() => {
+    window.print();
+    // Restaura os estilos após o print
+    setTimeout(() => {
+      doc.setAttribute('style', prevDocStyle);
+      overlay.setAttribute('style', prevOverlayStyle);
+    }, 500);
+  }, 100);
 }
 
 // ════════════════════════════════════════════════════════
